@@ -11,7 +11,7 @@ const ASSET_URLS = {
 export default async function handler(req, res) {
   console.log('NFT image endpoint - serving cached data only');
   
-  // Handle CORS
+  // Add CORS headers to allow cross-origin requests
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');

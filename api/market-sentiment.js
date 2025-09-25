@@ -1,6 +1,16 @@
 import { list } from '@vercel/blob';
 
 export default async function handler(req, res) {
+  // Add CORS headers to allow cross-origin requests
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   try {
     console.log('Market sentiment endpoint - serving cached data only');
     
