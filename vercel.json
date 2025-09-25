@@ -5,9 +5,20 @@
   "framework": null,
   "functions": {
     "api/*.js": {
-      "maxDuration": 10
+      "maxDuration": 10,
+      "runtime": "nodejs20.x"
+    },
+    "api/refresh-sentiment.js": {
+      "maxDuration": 60,
+      "runtime": "nodejs20.x"
     }
   },
+  "crons": [
+    {
+      "path": "/api/refresh-sentiment?secret=$CRON_SECRET",
+      "schedule": "0 */12 * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
