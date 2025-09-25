@@ -1,0 +1,22 @@
+{
+  "name": "bull-piano-nft-netlify",
+  "version": "1.0.0",
+  "description": "Dynamic NFT that changes based on market sentiment - Netlify deployment",
+  "type": "module",
+  "scripts": {
+    "build": "echo 'Static site - no build needed'",
+    "dev": "netlify dev"
+  },
+  "dependencies": {
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  },
+  "keywords": [
+    "nft",
+    "dynamic",
+    "market-sentiment",
+    "netlify"
+  ]
+}
