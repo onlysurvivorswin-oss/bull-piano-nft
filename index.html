@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bull & Piano - Dynamic NFT</title>
+    <meta name="description" content="Dynamic NFT that changes visual appearance based on real-time NFT market sentiment analysis">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background-color: #000000;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        
+        .nft-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .nft-image {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            transition: opacity 0.3s ease-in-out;
+        }
+        
+        .loading {
+            opacity: 0.7;
+        }
+        
+        .error-fallback {
+            color: #666;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .nft-image {
+                padding: 10px;
+            }
+        }
+        
+        @media (max-height: 600px) {
+            .nft-image {
+                padding: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="nft-container">
+        <img 
+            id="nftImage" 
+            class="nft-image loading" 
+            alt="Bull & Piano Dynamic NFT"
+            data-testid="nft-image"
+        />
+    </div>
+    
+    <script>
+        // Fallback image URL (stagnation state)
+        const STAGNATION_URL = 'https://r4vsc7esu3z27xxgh2bqrocs3jz4pin44ahw4hwk3ilabk2o2vwq.arweave.net/jyshfJKm86_e5j6DCLhS2nPHobzgD24eytoWAKtO1W0';
+        
+        // Get contract address from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const contract = urlParams.get('contract') || '0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D';
+        
+        const img = document.getElementById('nftImage');
+        
+        // Function to load the dynamic NFT image
+        function loadDynamicNFT() {
+            // Set image source directly to API endpoint - browser will follow redirects
+            img.src = `/api/nft-image?contract=${contract}`;
+        }
+        
+        // Handle image load errors by falling back to stagnation
+        img.onerror = function() {
+            if (img.src !== STAGNATION_URL) {
+                console.warn('Failed to load dynamic NFT, using fallback');
+                img.src = STAGNATION_URL;
+            }
+        };
+        
+        // Handle successful image load
+        img.onload = function() {
+            img.classList.remove('loading');
+        };
+        
+        // Initialize the NFT display
+        loadDynamicNFT();
+        
+        // Refresh every 12 hours to get updated market sentiment
+        setInterval(loadDynamicNFT, 12 * 60 * 60 * 1000);
+    </script>
+</body>
+</html>
