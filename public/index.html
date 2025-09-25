@@ -1,9 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
+<!-- 
+    Bull & Piano Dynamic NFT - Standalone Version
+    Hidden Poem (Easter Egg): "We endlessly stressed about the charts, just waiting for the bull"
+    This HTML file displays NFT images that change based on market sentiment
+    Optimized for minting on Manifold and other NFT platforms
+-->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bull & Piano - Dynamic NFT</title>
+    <title>THE BULL</title>
+    <meta name="description" content="Dynamic NFT that changes visual appearance based on real-time NFT market sentiment analysis">
     <style>
         * {
             margin: 0;
@@ -11,78 +18,86 @@
             box-sizing: border-box;
         }
         
-        html, body {
-            height: 100%;
+        body {
             background-color: #000000;
-            overflow: hidden;
-        }
-        
-        .container {
+            height: 100vh;
+            width: 100vw;
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            padding: 20px;
+            overflow: hidden;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        
+        .nft-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         .nft-image {
             max-width: 100%;
-            max-height: calc(100vh - 40px);
+            max-height: 100%;
             width: auto;
             height: auto;
             object-fit: contain;
-            transition: opacity 0.3s ease;
+            transition: opacity 0.3s ease-in-out;
         }
         
-        /* Mobile optimizations */
-        @media (max-width: 480px) {
-            .container {
+        .loading {
+            opacity: 0.7;
+        }
+        
+        .error-fallback {
+            color: #666;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .nft-image {
                 padding: 10px;
             }
-            
-            .nft-image {
-                max-height: calc(100vh - 20px);
-                max-width: calc(100vw - 20px);
-            }
         }
         
-        /* Tablet optimizations */
-        @media (min-width: 481px) and (max-width: 1024px) {
-            .container {
-                padding: 15px;
-            }
-            
+        @media (max-height: 600px) {
             .nft-image {
-                max-height: calc(100vh - 30px);
-                max-width: calc(100vw - 30px);
-            }
-        }
-        
-        /* Ultra-wide screen optimizations */
-        @media (min-aspect-ratio: 2/1) {
-            .nft-image {
-                max-height: calc(90vh - 40px);
-            }
-        }
-        
-        /* Portrait orientation optimizations */
-        @media (max-aspect-ratio: 1/2) {
-            .nft-image {
-                max-width: calc(90vw - 40px);
+                padding: 5px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <img id="nftImage" class="nft-image" alt="Bull & Piano Dynamic NFT" />
+    <div class="nft-container">
+        <img 
+            id="nftImage" 
+            class="nft-image loading" 
+            alt="Bull & Piano Dynamic NFT"
+            data-testid="nft-image"
+        />
     </div>
-
+    
     <script>
-        // Stagnation fallback URL
-        const STAGNATION_URL = 'https://r4vsc7esu3z27xxgh2bqrocs3jz4pin44ahw4hwk3ilabk2o2vwq.arweave.net/jyshfJKm86_e5j6DCLhS2nPHobzgD24eytoWAKtO1W0';
+        // All art state URLs for secret arrow key functionality
+        const ART_STATES = {
+            capitulation: 'https://6txiabgkdvd5nenuupzxtp7lbxcvx4vw3kra4ly7blafm2mproda.arweave.net/9O6ABModR9aRtKPzeb_rDcVb8rbaog4vHwrAVmmPi4Y',
+            stagnation: 'https://r4vsc7esu3z27xxgh2bqrocs3jz4pin44ahw4hwk3ilabk2o2vwq.arweave.net/jyshfJKm86_e5j6DCLhS2nPHobzgD24eytoWAKtO1W0',
+            resilience: 'https://lgwaa4z6aegrwftnh3v2zdaxjgvvxyv5g7orzbzufbpc5hgqnm5q.arweave.net/WawAcz4BDRsWbT7rrIwXSatb4r033RyHNCheLpzQazs',
+            euphoria: 'https://tkf3ssqdvpe3bnk25od6twbu3rioxksaxmedvldcs3nbs4ickpoq.arweave.net/mou5SgOrybC1WuuH6dg03FDrqkC7CDqsYpbaGXECU90'
+        };
         
-        // Get contract from URL params or use default
+        const STATE_NAMES = ['capitulation', 'stagnation', 'resilience', 'euphoria'];
+        let currentStateIndex = 1; // Start with stagnation
+        let isManualMode = false; // Track if user is manually browsing
+        
+        // Fallback image URL (stagnation state)
+        const STAGNATION_URL = ART_STATES.stagnation;
+        
+        // Get contract address from URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const contract = urlParams.get('contract') || '0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D';
         
@@ -91,22 +106,57 @@
         // Function to load the dynamic NFT image
         function loadDynamicNFT() {
             // Set image source directly to API endpoint - browser will follow redirects
+            // Using Vercel API endpoint to protect API key
             img.src = `/api/nft-image?contract=${contract}`;
         }
         
         // Handle image load errors by falling back to stagnation
         img.onerror = function() {
             if (img.src !== STAGNATION_URL) {
-                console.error('Image failed to load, falling back to stagnation');
+                console.warn('Failed to load dynamic NFT, using fallback');
                 img.src = STAGNATION_URL;
             }
         };
         
-        // Load the image when page loads
+        // Handle successful image load
+        img.onload = function() {
+            img.classList.remove('loading');
+        };
+        
+        // Secret arrow key functionality to cycle through art states
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+                event.preventDefault();
+                isManualMode = true;
+                
+                if (event.key === 'ArrowRight') {
+                    currentStateIndex = (currentStateIndex + 1) % STATE_NAMES.length;
+                } else if (event.key === 'ArrowLeft') {
+                    currentStateIndex = (currentStateIndex - 1 + STATE_NAMES.length) % STATE_NAMES.length;
+                }
+                
+                const newState = STATE_NAMES[currentStateIndex];
+                img.src = ART_STATES[newState];
+                console.log(`Secret mode: Showing ${newState} state`);
+            }
+            
+            // Press any other key to return to dynamic mode
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight' && isManualMode) {
+                isManualMode = false;
+                loadDynamicNFT();
+                console.log('Returned to dynamic NFT mode');
+            }
+        });
+        
+        // Initialize the NFT display
         loadDynamicNFT();
         
-        // Optional: Refresh every 12 hours to check for sentiment changes
-        setInterval(loadDynamicNFT, 12 * 60 * 60 * 1000);
+        // Refresh every 24 hours to be least aggressive on API calls (only when not in manual mode)
+        setInterval(() => {
+            if (!isManualMode) {
+                loadDynamicNFT();
+            }
+        }, 24 * 60 * 60 * 1000);
     </script>
 </body>
 </html>
