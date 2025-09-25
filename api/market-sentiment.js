@@ -1,5 +1,5 @@
 // Market sentiment analysis Vercel Function
-import { z } from "zod";
+const { z } = require("zod");
 
 // Validation schemas
 const marketSentimentSchema = z.object({
@@ -25,7 +25,7 @@ const marketSentimentSchema = z.object({
 const cache = new Map();
 const CACHE_DURATION = 12 * 60 * 60 * 1000; // 12 hours
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // Handle CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
