@@ -88,7 +88,7 @@
         // Function to load the dynamic NFT image
         function loadDynamicNFT() {
             // Set image source directly to API endpoint - browser will follow redirects
-            img.src = `/api/nft-image?contract=${contract}`;
+            img.src = `https://bull-piano-nft.vercel.app/api/nft-image?contract=${contract}`;
         }
         
         // Handle image load errors by falling back to stagnation
