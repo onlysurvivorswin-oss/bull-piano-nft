@@ -12,7 +12,7 @@ const ASSET_URLS = {
 const cache = new Map();
 const CACHE_DURATION = 12 * 60 * 60 * 1000; // 12 hours
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   console.log('NFT image endpoint called');
   
   // Handle CORS
@@ -26,7 +26,8 @@ export default async function handler(req, res) {
   }
 
   if (req.method !== 'GET') {
-    return res.redirect(302, ASSET_URLS.stagnation);
+    res.writeHead(302, { 'Location': ASSET_URLS.stagnation });
+    return res.end();
   }
 
   try {
@@ -36,14 +37,16 @@ export default async function handler(req, res) {
     
     // Check for manual override first
     if (forceState && forceState in ASSET_URLS) {
-      return res.redirect(302, ASSET_URLS[forceState]);
+      res.writeHead(302, { 'Location': ASSET_URLS[forceState] });
+      return res.end();
     }
     
     // Validate API key
     const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY;
     if (!ALCHEMY_API_KEY) {
       // Fallback to default state if API not configured
-      return res.redirect(302, ASSET_URLS.stagnation);
+      res.writeHead(302, { 'Location': ASSET_URLS.stagnation });
+      return res.end();
     }
     
     // Check cache first
@@ -86,7 +89,8 @@ export default async function handler(req, res) {
       } catch (error) {
         console.error('Error fetching sentiment data for image:', error);
         // Fallback to default state on error
-        return res.redirect(302, ASSET_URLS.stagnation);
+        res.writeHead(302, { 'Location': ASSET_URLS.stagnation });
+        return res.end();
       }
     }
     
@@ -94,12 +98,14 @@ export default async function handler(req, res) {
     const imageUrl = ASSET_URLS[sentimentData.market_state] || ASSET_URLS.stagnation;
     
     // Redirect to the Arweave URL
-    return res.redirect(302, imageUrl);
+    res.writeHead(302, { 'Location': imageUrl });
+    return res.end();
     
   } catch (error) {
     console.error('Error in nft-image function:', error);
     // Fallback to default state on any error
-    return res.redirect(302, ASSET_URLS.stagnation);
+    res.writeHead(302, { 'Location': ASSET_URLS.stagnation });
+    return res.end();
   }
 }
 
