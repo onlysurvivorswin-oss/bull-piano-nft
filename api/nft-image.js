@@ -1,6 +1,6 @@
-// NFT Image Vercel Function - ES Module version
-// Redirects to appropriate Arweave URL based on market sentiment
+import { list } from '@vercel/blob';
 
+// Asset URLs for each market state
 const ASSET_URLS = {
   capitulation: 'https://6txiabgkdvd5nenuupzxtp7lbxcvx4vw3kra4ly7blafm2mproda.arweave.net/9O6ABModR9aRtKPzeb_rDcVb8rbaog4vHwrAVmmPi4Y',
   stagnation: 'https://r4vsc7esu3z27xxgh2bqrocs3jz4pin44ahw4hwk3ilabk2o2vwq.arweave.net/jyshfJKm86_e5j6DCLhS2nPHobzgD24eytoWAKtO1W0',
@@ -9,128 +9,85 @@ const ASSET_URLS = {
 };
 
 export default async function handler(req, res) {
-  console.log('NFT image endpoint called');
+  console.log('NFT image endpoint - serving cached data only');
   
   // Handle CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
-  res.setHeader('Cache-Control', 'public, max-age=1800');
-
+  
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   try {
-    const { force: forceState } = req.query;
-    
     // Check for manual override first (for testing)
+    const forceState = req.query.force;
     if (forceState && forceState in ASSET_URLS) {
-      console.log(`Force override: ${forceState}`);
-      res.writeHead(302, { 'Location': ASSET_URLS[forceState] });
-      return res.end();
+      console.log(`Manual override: forcing ${forceState} state`);
+      res.setHeader('Cache-Control', 'public, max-age=43200'); // 12 hours
+      return res.redirect(302, ASSET_URLS[forceState]);
     }
     
-    // Validate API key
-    const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY;
-    if (!ALCHEMY_API_KEY) {
-      console.warn('ALCHEMY_API_KEY not configured, falling back to stagnation');
-      res.writeHead(302, { 'Location': ASSET_URLS.stagnation });
-      return res.end();
-    }
-    
-    console.log('Calculating market sentiment for image selection...');
-    
-    // Quick market sentiment calculation using top 3 collections for speed
-    const collections = [
-      '0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D', // BAYC
-      '0xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb', // CryptoPunks  
-      '0xED5AF388653567Af2F388E6224dC7C4b3241C544'  // Azuki
-    ];
-
-    let totalVolume = 0;
-    let successfulCalls = 0;
-    
-    // Fetch from top 3 collections for faster response
-    const fetchPromises = collections.map(async (contractAddress) => {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout
-        
-        const response = await fetch(
-          `https://eth-mainnet.g.alchemy.com/nft/v2/${ALCHEMY_API_KEY}/getNFTSales?contractAddress=${contractAddress}&order=desc&limit=30`,
-          { 
-            headers: { 'Accept': 'application/json' },
-            signal: controller.signal
-          }
-        );
-        
-        clearTimeout(timeoutId);
-        
-        if (!response.ok) return 0;
-
-        const data = await response.json();
-        const sales = data.nftSales || [];
-        
-        let volume = 0;
-        sales.forEach(sale => {
-          try {
-            const sellerFee = BigInt(sale.sellerFee?.amount || '0');
-            const protocolFee = BigInt(sale.protocolFee?.amount || '0');
-            const royaltyFee = BigInt(sale.royaltyFee?.amount || '0');
-            const totalWei = sellerFee + protocolFee + royaltyFee;
-            volume += Number(totalWei) / 1e18;
-          } catch (e) {
-            // Skip invalid sales
-          }
-        });
-
-        successfulCalls++;
-        return volume;
-        
-      } catch (error) {
-        console.error(`Error fetching ${contractAddress}:`, error.message);
-        return 0;
-      }
+    // Read cached sentiment data from Vercel Blob
+    const { blobs } = await list({
+      prefix: 'market/',
+      limit: 1
     });
-
-    // Execute all fetches with timeout
-    const results = await Promise.allSettled(fetchPromises);
     
-    results.forEach(result => {
-      if (result.status === 'fulfilled') {
-        totalVolume += result.value;
-      }
-    });
-
-    // Extrapolate to full market volume (scale up to 7 collections)
-    if (successfulCalls > 0) {
-      totalVolume = totalVolume * (7 / Math.max(successfulCalls, 1));
+    if (blobs.length === 0) {
+      // No cached data available - fallback to stagnation
+      console.warn('No cached sentiment data found, falling back to stagnation');
+      res.setHeader('Cache-Control', 'public, max-age=43200'); // 12 hours
+      return res.redirect(302, ASSET_URLS.stagnation);
     }
-
-    console.log(`Estimated market volume: ${totalVolume.toFixed(1)} ETH`);
-
-    // Determine market state based on ETH volume thresholds
-    let market_state;
-    if (totalVolume < 2000) market_state = 'capitulation';      // <2000 ETH
-    else if (totalVolume < 4000) market_state = 'stagnation';   // 2000-4000 ETH  
-    else if (totalVolume < 7000) market_state = 'resilience';   // 4000-7000 ETH
-    else market_state = 'euphoria';                             // 7000+ ETH
-
-    // Get the appropriate image URL
-    const imageUrl = ASSET_URLS[market_state] || ASSET_URLS.stagnation;
     
-    console.log(`Market state: ${market_state}, redirecting to: ${imageUrl}`);
+    // Fetch the latest cached data
+    const latestBlob = blobs[0];
+    const response = await fetch(latestBlob.url);
     
-    // Redirect to the Arweave URL
-    res.writeHead(302, { 'Location': imageUrl });
-    return res.end();
+    if (!response.ok) {
+      console.error(`Failed to fetch cached data: ${response.status}`);
+      res.setHeader('Cache-Control', 'public, max-age=43200'); // 12 hours
+      return res.redirect(302, ASSET_URLS.stagnation);
+    }
+    
+    const cachedData = await response.json();
+    const market_state = cachedData.market_state;
+    
+    // Validate market state
+    if (!market_state || !(market_state in ASSET_URLS)) {
+      console.error(`Invalid market state in cached data: ${market_state}`);
+      res.setHeader('Cache-Control', 'public, max-age=43200'); // 12 hours
+      return res.redirect(302, ASSET_URLS.stagnation);
+    }
+    
+    // Check if data is stale (older than 36 hours)
+    const dataAge = Date.now() - cachedData.timestamp;
+    const isStale = dataAge > (36 * 60 * 60 * 1000); // 36 hours
+    
+    if (isStale) {
+      console.warn(`Cached data is stale (${Math.round(dataAge / (60 * 60 * 1000))} hours old), but serving anyway`);
+    }
+    
+    console.log(`Serving cached market state: ${market_state} (data age: ${Math.round(dataAge / (60 * 60 * 1000))}h)`);
+    
+    // Set cache headers for 12-hour caching
+    res.setHeader('Cache-Control', 'public, max-age=43200'); // 12 hours
+    res.setHeader('ETag', `"${market_state}-${latestBlob.downloadUrl.split('/').pop()}"`);
+    
+    // Redirect to appropriate image
+    return res.redirect(302, ASSET_URLS[market_state]);
     
   } catch (error) {
-    console.error('Error in nft-image function:', error);
+    console.error('Error serving cached NFT image:', error);
     
-    // Always fallback to stagnation on any error
-    res.writeHead(302, { 'Location': ASSET_URLS.stagnation });
-    return res.end();
+    // Fallback to stagnation on any error
+    res.setHeader('Cache-Control', 'public, max-age=43200'); // 12 hours
+    return res.redirect(302, ASSET_URLS.stagnation);
   }
 }
