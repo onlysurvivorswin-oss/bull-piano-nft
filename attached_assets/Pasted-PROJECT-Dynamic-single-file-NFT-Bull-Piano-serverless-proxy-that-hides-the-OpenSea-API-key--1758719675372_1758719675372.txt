@@ -1,0 +1,72 @@
+PROJECT: Dynamic single-file NFT (“Bull & Piano”) + serverless proxy that hides the OpenSea API key
+
+GOAL
+Build a tiny repo with:
+1) A SINGLE self-contained `index.html` that swaps between 4 visual states based on OpenSea collection stats.
+2) A serverless “worker” proxy that calls OpenSea with a secret API key and returns minimal JSON to the HTML. (Cloudflare Worker preferred; include a basic Node/Express fallback for local testing.)
+
+ART CONCEPT (4 states → single-word titles)
+- capitulation → bull skeleton at base of piano
+- stagnation → bull lying at base of piano
+- resilience → bull standing beside piano
+- euphoria → horde of bulls, piano lifted
+
+DATA & SIGNAL (OpenSea v2)
+- Endpoint: GET `/api/v2/collections/{collection_slug}/stats`
+- We need: `one_day.volume` and `thirty_day.volume` (volumes in ETH)
+- The worker must return JSON ONLY: `{ "volume_1d": number, "volume_30d": number }`
+
+MAPPING LOGIC (done in the HTML)
+- Compute: `ratio = volume_1d / (volume_30d / 30)`  // compare 24h vs 30-day average per day
+- Thresholds → state:
+  - ratio < 0.30 → "capitulation"
+  - 0.30 ≤ ratio < 0.90 → "stagnation"
+  - 0.90 ≤ ratio < 1.50 → "resilience"
+  - ratio ≥ 1.50 → "euphoria"
+
+CACHING & STABILITY
+- Worker: edge cache 12h (Cache-Control: public, max-age=43200). Also use Worker `caches.default` with a slug-keyed cache entry.
+- HTML: localStorage cache for 12h to avoid excess requests from viewers.
+- Fallback: if API fails or no data → default to "stagnation".
+- Manual override for curation/screenshots: `?force=capitulation|stagnation|resilience|euphoria`.
+
+SECURITY
+- API key MUST NEVER appear in client code.
+- Use Cloudflare Worker secrets (or Replit Secrets if using the Express fallback).
+- Lock the worker to a single allowed collection slug (env var) and set CORS (ALLOW_ORIGIN env; default `*`).
+
+DELIVERABLES (FILES TO CREATE)
+- `index.html` (single self-contained HTML page)
+  Requirements:
+  - Minimal CSS (full-viewport, dark bg).
+  - `<img>` (or `<video>`) containers for each state, hidden/shown by JS.
+  - Config constants at top:
+      - `PROXY_URL` (string) — set to deployed worker endpoint: `https://<worker>.workers.dev/stats?slug=<slug>`
+      - `DEFAULT_VARIANT` = "stagnation"
+  - Title label showing the state word.
+  - Status line showing: `1d vol`, `30d avg/day` and resolved state.
+  - Add `<link rel="preconnect" href="https://arweave.net" crossorigin>` to speed up first byte.
+  - Accept asset URLs (images or videos) as constants near top, e.g.:
+      - `ASSET_CAPITULATION = "https://arweave.net/<txid1>"`
+      - `ASSET_STAGNATION  = "https://arweave.net/<txid2>"`
+      - `ASSET_RESILIENCE  = "https://arweave.net/<txid3>"`
+      - `ASSET_EUPHORIA    = "https://arweave.net/<txid4>"`
+  - Implement logic:
+      - Try `?force=` first.
+      - Load cached decision if <12h old.
+      - Else fetch PROXY_URL (`cache: "no-store"`), compute ratio, map to state, cache, render.
+
+- `src/index.js` (Cloudflare Worker)
+  Requirements:
+  - Route: `GET /stats?slug=<slug>`
+  - Validate slug equals env `ALLOWED_SLUG`; else 403.
+  - Fetch: `https://api.opensea.io/api/v2/collections/{slug}/stats` with header `x-api-key: OPENSEA_KEY`.
+  - Extract `one_day.volume` and `thirty_day.volume` from `intervals`.
+  - Return `{ volume_1d, volume_30d }` with `Cache-Control: public, max-age=43200`.
+  - Edge cache with `caches.default` keyed by slug.
+  - CORS: `access-control-allow-origin: ALLOW_ORIGIN` (env; default `*`).
+  - OPTIONS handler for CORS preflight.
+  - Secrets: `OPENSEA_KEY` (required), `ALLOW_ORIGIN` (optional), `ALLOWED_SLUG` (required).
+
+- `wrangler.toml`
+  Minimal config:
