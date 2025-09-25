@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bull & Piano - Dynamic NFT</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html, body {
+            height: 100%;
+            background-color: #000000;
+            overflow: hidden;
+        }
+        
+        .container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .nft-image {
+            max-width: 100%;
+            max-height: calc(100vh - 40px);
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            transition: opacity 0.3s ease;
+        }
+        
+        /* Mobile optimizations */
+        @media (max-width: 480px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .nft-image {
+                max-height: calc(100vh - 20px);
+                max-width: calc(100vw - 20px);
+            }
+        }
+        
+        /* Tablet optimizations */
+        @media (min-width: 481px) and (max-width: 1024px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .nft-image {
+                max-height: calc(100vh - 30px);
+                max-width: calc(100vw - 30px);
+            }
+        }
+        
+        /* Ultra-wide screen optimizations */
+        @media (min-aspect-ratio: 2/1) {
+            .nft-image {
+                max-height: calc(90vh - 40px);
+            }
+        }
+        
+        /* Portrait orientation optimizations */
+        @media (max-aspect-ratio: 1/2) {
+            .nft-image {
+                max-width: calc(90vw - 40px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <img id="nftImage" class="nft-image" alt="Bull & Piano Dynamic NFT" />
+    </div>
+
+    <script>
+        // Stagnation fallback URL
+        const STAGNATION_URL = 'https://r4vsc7esu3z27xxgh2bqrocs3jz4pin44ahw4hwk3ilabk2o2vwq.arweave.net/jyshfJKm86_e5j6DCLhS2nPHobzgD24eytoWAKtO1W0';
+        
+        // Get contract from URL params or use default
+        const urlParams = new URLSearchParams(window.location.search);
+        const contract = urlParams.get('contract') || '0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D';
+        
+        const img = document.getElementById('nftImage');
+        
+        // Function to load the dynamic NFT image
+        function loadDynamicNFT() {
+            // Set image source directly to API endpoint - browser will follow redirects
+            img.src = `/api/nft-image?contract=${contract}`;
+        }
+        
+        // Handle image load errors by falling back to stagnation
+        img.onerror = function() {
+            if (img.src !== STAGNATION_URL) {
+                console.error('Image failed to load, falling back to stagnation');
+                img.src = STAGNATION_URL;
+            }
+        };
+        
+        // Load the image when page loads
+        loadDynamicNFT();
+        
+        // Optional: Refresh every 12 hours to check for sentiment changes
+        setInterval(loadDynamicNFT, 12 * 60 * 60 * 1000);
+    </script>
+</body>
+</html>
