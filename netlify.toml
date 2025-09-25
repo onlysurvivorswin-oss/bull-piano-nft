@@ -1,0 +1,24 @@
+[build]
+  functions = "netlify/functions"
+  publish = "public"
+
+[functions]
+  external_node_modules = ["zod"]
+  node_bundler = "esbuild"
+
+# Redirect API calls to Netlify Functions
+[[redirects]]
+  from = "/api/market-sentiment"
+  to = "/.netlify/functions/market-sentiment"
+  status = 200
+  
+[[redirects]]
+  from = "/api/nft-image"
+  to = "/.netlify/functions/nft-image"  
+  status = 200
+
+# Serve the main HTML file for all other routes
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
